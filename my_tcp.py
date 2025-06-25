@@ -3,6 +3,7 @@ from scapy.all import conf
 
 INTERFACE = "Hyper-V Virtual Ethernet Adapter"
 MY_MAC = '00155d7d9e4d'
+BROADCAST  = 'ffffffffffff'
 MAC_LENGTH = 6
 DST_MAC_INDEX  = 0
 RAW_PACKET_DATA_INDEX = 1
@@ -11,7 +12,8 @@ RAW_PACKET_DATA_INDEX = 1
 def check_ether(packet):
     if packet == None:
         return False
-    if packet[DST_MAC_INDEX: DST_MAC_INDEX + MAC_LENGTH].hex() == MY_MAC:
+    dst_mac = packet[DST_MAC_INDEX: DST_MAC_INDEX + MAC_LENGTH].hex()
+    if dst_mac == MY_MAC or dst_mac.hex() == BROADCAST:
         return True
     return False
 
