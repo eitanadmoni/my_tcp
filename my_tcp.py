@@ -1,29 +1,53 @@
 from scapy.all import conf
+import struct
 
 
-INTERFACE = "Hyper-V Virtual Ethernet Adapter"
-MY_MAC = '00155d7d9e4d'
-BROADCAST  = 'ffffffffffff'
-MAC_LENGTH = 6
-DST_MAC_INDEX  = 0
+BROADCAST  = bytes.fromhex('ffffffffffff')
 RAW_PACKET_DATA_INDEX = 1
+ETHR_FRAME_SIZE = 16
 
 
-def check_ether(packet):
-    if packet == None:
-        return False
-    dst_mac = packet[DST_MAC_INDEX: DST_MAC_INDEX + MAC_LENGTH].hex()
-    if dst_mac == MY_MAC or dst_mac.hex() == BROADCAST:
+class EthernetFrame():
+    def __init__(self, packet):
+        self.dst_mac, self.src_mac, self.type = struct.unpack('=6s6s4s', packet)
+
+
+def is_ethr_multicast(addr):
+    """
+    Function to check if given mac address is a multicast address
+    addr: A mac address to check if it multicast
+    """
+    first_octet, _ = struct.unpack('=b5s', addr)
+    if first_octet % 2 == 1:
+        return True
+    return False
+
+
+def ether_packet_is_mine(packet, mac_addr):
+    """
+    Function to check if given packet is intended for specific mac address
+    packet: A bytes object that represent packet
+    mac_addr: A mac address to check if the packet is for it
+    """
+    ethr_frame = EthernetFrame(packet[:ETHR_FRAME_SIZE])
+    if ethr_frame.dst_mac == mac_addr or is_ethr_multicast(ethr_frame.dst_mac):  
         return True
     return False
 
 
 def get_ether_packet():
+    """
+    Function that sniff and catch packet that intended to the user mac.
+    """
+    interface = input("Enter interface to listen at: ")
+    mac_addr = bytes.fromhex(input("Enter your mac address: "))
+    sock = conf.L2socket(iface=interface, promisc=True) # Create the socket
     while True:
-        sock = conf.L2socket(iface=INTERFACE, promisc=True) # Create the socket
         recv = sock.recv_raw()
         packet = recv[RAW_PACKET_DATA_INDEX]
-        if check_ether(packet):
+        if packet == None:
+            continue
+        if ether_packet_is_mine(packet, mac_addr):
             return packet
 
 
